@@ -1,34 +1,81 @@
+import { clear } from "@testing-library/user-event/dist/clear"
 import { useState } from "react"
 
 function App(){
-
+    
     const[data, setData] = useState([])
+    
+    const [sortBy, setSortBy] = useState("input")
 
     function handleData(item){
         setData((previous) => [...previous, item])
+    }
+    
+    function handlePacked(id){
+        setData(data.map((obj) => {
+            if(obj.id===id){
+                return {...obj, packed: !obj.packed}
+            }else{
+                return obj;
+            }
+        }))
+    }
+    
+    function onDeleteItem(id){
+        setData((prev) => prev.filter((object) => object.id !== id))
+    }
+
+    function onClearList(){
+        let confirmMessage = window.confirm("do you want to delete all the list?")
+        if (confirmMessage){
+            setData([])
+        }
+    }
+
+    function sortItems(items){
+        if (sortBy === "input") {
+            return items.slice().sort((a, b) => a.id - b.id)
+        }
+
+        if (sortBy === "packed") {
+            return items.slice().sort((a, b) => Number(a.packed) - Number(b.packed))
+        }
+
+        if (sortBy === "description") {
+            return items.slice().sort((a, b) =>
+                a.description.localeCompare(b.description)
+            )
+        }
+
+        return items
     }
 
     return <div className="app">
 
       <Logo />
       <Form handleData = {handleData} />
-      <PackingList />
-      <Status />
+      <PackingList 
+        data = {data} 
+        handlePacked = {handlePacked} 
+        onDeleteItem = {onDeleteItem} 
+        onClearList = {onClearList} 
+        sortItems = {sortItems}
+        setSortBy = {setSortBy}
+      />
+      <Status data={data} />
       
     </div>
 }
 export default App
+
 function Logo(){
     return <h1>🌴 FAR AWAY 🧳</h1>
 }
+
 function Form({ handleData }){
 
-    // HERE I FACE A PROBLEM AND THAT IS WHY SHOULD I DESTRUCTURE IT ? LOOK AT THE LINE 24
-    
     const [description, setDescription] = useState("")
     const [qunatity, setQuantity] = useState(1)
-
-
 
     function handleSubmit(e){
         e.preventDefault();
@@ -40,24 +87,18 @@ function Form({ handleData }){
             qunatity
         }
 
-        
-
-        
         handleData(item)
         setDescription("")
         setQuantity(1)
-        
     }
 
     function handleDescription(e){
         setDescription(e.target.value);
-        
-    }
-    function handleQuantity(e){
-        setQuantity(+e.target.value);
-        
     }
 
+    function handleQuantity(e){
+        setQuantity(+e.target.value);
+    }
 
     return <div className='add-form'>
 
@@ -76,41 +117,64 @@ function Form({ handleData }){
         <button type='submit'>ADD</button>
     </form>
     
-
     </div>
 }
-function PackingList(){
+
+function PackingList( {data, handlePacked, onDeleteItem, onClearList, sortItems, setSortBy} ){
+
+    const sortedData = sortItems(data)
+
     return <div className='list'>
 
         <ul>
+            
+          {sortedData.map((item) => {
+            return <li key={item.id}>
+                <input 
+                type="checkbox"
+                onClick={() => handlePacked(item.id)}
+                />
 
+                <span style={item.packed ? {textDecoration: "line-through"} : {}}>
+                    {item.qunatity} {item.description}
+                </span>
+                <button onClick={()=> onDeleteItem(item.id)}>❌</button>
+            </li>
+          })}
+             
         </ul>
 
         <div className='actions'>
 
-            <select>
-                <option >SORT BY INPUT NUMBER</option>
-                <option>SORT BY PACKED STATUS</option>
-                <option>SORT BY DESCRIPTION</option>
+            <select onChange={(e) => setSortBy(e.target.value)}>
+                <option value="input">SORT BY INPUT NUMBER</option>
+                <option value="packed">SORT BY PACKED STATUS</option>
+                <option value="description">SORT BY DESCRIPTION</option>
             </select>
 
-            <button>CLEAR LIST</button>
+            <button onClick={onClearList}>CLEAR LIST</button>
 
         </div>
     </div>
 }
 
-function Status(){
-    // if(){
+function Status({ data }){
+    const total = data.length
+    const packed = data.filter(item => item.packed).length
+
+    if (total === 0) {
+        return <footer className='stats'>
+            <p>Start adding something to your packing list 🚀</p>
+        </footer>
+    }
+
+    if (packed < total) {
+        return <footer className='stats'>
+            <p>Good, add something more 😉</p>
+        </footer>
+    }
+
     return <footer className='stats'>
-                <p>Start adding something to your packing list 🚀</p>
-         </footer>
-    // }
-    // else if(){
-    //       return <div className='stats'>
-    //         <h3>You have <span>{wrtie something here a variable that relates to the number}</span>, and you already packed <span>{wrtie something here a variable that relates to the number} {`${}%`}</span></h3>
-    //     </div>
-    // }else{
-    //     return <h3>You got everything, Ready to go ✈</h3>
-    // }
+        <p>You are ready to go ✈️</p>
+    </footer>
 }
